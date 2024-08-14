@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Log;
 use App\Models\User;
 use App\Models\Profile;
 use Illuminate\Http\Request;
@@ -9,41 +10,56 @@ use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
-    public function userProfile($id)
+   
+    public function userProfile(Request $request)
     {
-        $user = User::with('profile')->findOrFail($id);
+        $userId =  $request->user();
 
-        if(!$user){
+        $user = User::with('profile')->findOrFail($userId->id);
+
+        if (!$user) {
             return response()->json(['massage' => 'User not found!']);
         }
-        
+
         return response()->json(['data' => $user]);
     }
     public function update(Request $request)
     {
-        $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
+
+        $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'phone' => 'required|string|max:15',
-            'profile_picture' => 'nullable|max:255',
             'bio' => 'nullable|string',
         ]);
 
+        $userId =  $request->user();
+
         // Check if the profile exists
-        $profile = Profile::where('user_id', $validated['user_id'])->first();
+        $profile = Profile::where('user_id', $userId->id)->first();
 
-        // If the profile exists, update it; otherwise, create a new one
-        if ($profile) {         
+        if ($profile) {
 
-            $profile->update($validated);
-            return response()->json(['message' => 'Profile update successfully','data' =>$profile]);
+            $profile->update([
+                'user_id' => $userId->id,
+                'first_name' => $request->first_name ?? '',
+                'last_name' => $request->last_name ?? '',
+                'phone' => $request->phone ?? '',
+                'profile_picture' => '',
+                'bio' => $request->bio ?? '',
+            ]);
+            return response()->json(['message' => 'Profile update successfully', 'data' => $profile]);
+        } else {
 
-        } else {           
-
-            $profile = Profile::create($validated);
-            return response()->json(['message' => 'Profile update successfully','data' =>$profile]);
-
+            $profile = Profile::create([
+                'user_id' => $userId->id,
+                'first_name' => $request->first_name ?? '',
+                'last_name' => $request->last_name ?? '',
+                'phone' => $request->phone ?? '',
+                'profile_picture' => '',
+                'bio' => $request->bio ?? '',
+            ]);
+            return response()->json(['message' => 'Profile update successfully', 'data' => $profile]);
         }
     }
 }
